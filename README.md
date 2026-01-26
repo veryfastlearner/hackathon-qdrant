@@ -1,7 +1,8 @@
 # hackathon-qdrant
 Multimodal Decision Memory &amp; Anomaly Detection for Credit Scoring
 
-Architecture
+Architecture:
+
 Multimodal RAG Architecture with dual-stream embeddings
 
 Qdrant Vector Database for storing applicant fingerprints
