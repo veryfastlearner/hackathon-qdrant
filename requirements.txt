@@ -1,1 +1,5 @@
-chonkie
+qdrant-client
+sentence-transformers
+anthropic
+python-dotenv
+pydantic
