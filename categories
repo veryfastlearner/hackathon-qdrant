@@ -1,0 +1,75 @@
+import numpy as np
+from qdrant_client import QdrantClient, models
+from qdrant_client.http.models import Distance, VectorParams, PointStruct
+from sentence_transformers import SentenceTransformer
+from openai import OpenAI
+
+# 1. Setup Clients
+# Using a local model for embeddings to avoid API costs/latency
+model = SentenceTransformer('all-MiniLM-L6-v2') 
+client = QdrantClient(":memory:") 
+llm_client = OpenAI(api_key="AIzaSyAA3Ri7F8LxRNG71E-kiHqgFeuTPHdu70Y")
+COLLECTION_NAME = "credit_score_memory"
+
+# 2. Initialize Collection
+client.recreate_collection(
+    collection_name=COLLECTION_NAME,
+    vectors_config={
+        "financial": VectorParams(size=384, distance=Distance.COSINE),
+        "behavioral": VectorParams(size=384, distance=Distance.COSINE),
+    }
+)
+
+def process_applicant(applicant_text, behavioral_text):
+    # Generate real embeddings from your text/data
+    fin_vec = model.encode(applicant_text).tolist()
+    beh_vec = model.encode(behavioral_text).tolist()
+
+    # 3. Multimodal Search (Risk Proximity)
+    search_results = client.search(
+        collection_name=COLLECTION_NAME,
+        query_vector=("financial", fin_vec),
+        with_payload=True,
+        limit=3
+    )
+
+    # 4. Anomaly Detection Logic
+    # If the score is below 0.5, it means no similar history exists (Anomaly)
+    is_anomaly = True if not search_results or search_results[0].score < 0.5 else False
+
+    # 5. Build Agent Context
+    history = ""
+    for hit in search_results:
+        history += f"- Past Case: {hit.payload['status']} (Similarity: {hit.score:.2f})\n"
+
+    prompt = f"""
+    Analyze this loan application.
+    HISTORICAL MEMORY: {history if history else "No similar historical data found."}
+    APPLICANT DATA: {applicant_text}
+    BEHAVIORAL DATA: {behavioral_text}
+    ANOMALY DETECTED: {is_anomaly}
+    
+    Categorize this user and provide 'APPROVED' or 'FAILED'. Explain why.
+    """
+
+    response = llm_client.chat.completions.create(
+        model="gpt-4o-mini", # Faster/cheaper for hackathons
+        messages=[{"role": "user", "content": prompt}]
+    )
+    
+    return response.choices[0].message.content
+
+# --- TEST IT ---
+# Add one mock historical record so the search has something to find
+client.upsert(
+    collection_name=COLLECTION_NAME,
+    points=[PointStruct(
+        id=1, 
+        vector={"financial": model.encode("Income 50k, Debt 10k").tolist(), 
+                "behavioral": model.encode("Stable login, verified ID").tolist()},
+        payload={"status": "approved"}
+    )]
+)
+
+result = process_applicant("Income 55k, Debt 12k", "Verified user from US")
+print(f"AGENT DECISION:\n{result}")
