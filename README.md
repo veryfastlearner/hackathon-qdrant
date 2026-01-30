@@ -1,5 +1,5 @@
 # hackathon-qdrant
-Multimodal Decision Memory &amp; Anomaly Detection for Credit Scoring
+llm council that decides loan approval (just a grok api with different personas for now)
 
 Architecture:
 
