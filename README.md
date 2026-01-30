@@ -3,10 +3,9 @@ Multimodal Decision Memory &amp; Anomaly Detection for Credit Scoring
 
 Architecture:
 
-Multimodal RAG Architecture with dual-stream embeddings
-
-Qdrant Vector Database for storing applicant fingerprints
-
-Risk Proximity Score based on similarity-weighted historical outcomes
-
-Anomaly Detection using Qdrant's distance metrics
+load data vias csv_read
+embed directly using fastembed
+user inputs his loan application
+perform similarity search
+an llm council decides wether to approve loan orn
+done by voting
